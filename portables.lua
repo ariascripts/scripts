@@ -2,7 +2,7 @@
     @name Alpha Portables
     @description Automates tasks at portable skilling stations (ideally at W84 Fort Forinthry)
     @author Aria
-    @version 1.0
+    @version 1.1
 ]]
 
 local API = require("api")
@@ -27,9 +27,9 @@ local PORTABLES = {
     {id = SCENE_OBJECTS.CRAFTER, action = 0x29, skill = "CRAFTING"}
 }
 
---#region User Inputs
+--#region User Inputs, don't modify this if you don't know what you're doing
 local loadPresetKey = 0x32 --The 2 key
---Change this value to 1 = workbench, 2 = fletcher, 3 = range, 4 = well, 5 = crafter
+--Change this value to 1 = workbench, 2 = fletcher, 3 = range, 4 = well, 5 = crafter if you don't want to have to select the portable you're using each time
 local chosenPortable = -1
 --Max time to remain in the "processing" state before attempting to interact again
 --You may want to change the timeout (in seconds) depending on the skill you are training
@@ -53,20 +53,11 @@ local ID = {
 itemList = {} 
 --Example for cooking raw green jellyfish
 --itemList[1] = { id = ID.RAW_GREEN_JELLYFISH, amount = 28 }
---Example for making extreme ranging
---itemList[1] = { id = ID.SUPER_RANGING, amount = 27 }
---itemList[2] = { id = ID.GRENWALL_SPIKES, amount = 135 }
---Example for cutting dragonstones
---itemList[1] = { id = ID.UNCUT_DRAGONSTONE, amount = 28 } 
---Example for fletching ascension bolts
---itemList[1] = { id = ID.ASCENSION_SHARD, amount = 10 } 
---Example for using protean planks
---itemList[1] = { id = ID.PROTEAN_PLANK, amount = 60 } 
 
 --#endregion
 
 if chosenPortable == -1 then
-    print("Please edit the `chosenPortable` variable in the script to match the portable you want to use")
+    print("Please select the portable station you want to use")
 end
 
 if not itemList[1] then
@@ -82,12 +73,22 @@ if not itemList[1] then
         added[vec[i].itemid1] = true
       end
     end
+    --print("Please add the items you are processing")
 end
 
-startXp = API.GetSkillXP(PORTABLES[chosenPortable].skill)
+local portableOptions = { "Workbench", "Fletcher", "Range", "Well", "Crafter" }
+
+startXp = 0 --API.GetSkillXP(PORTABLES[chosenPortable].skill)
 lastXp = startXp
 startTime, afk = os.time(), os.time()
 lastTimeGainedXp = os.time()
+
+local function resetStats() 
+    startXp = API.GetSkillXP(PORTABLES[chosenPortable].skill)
+    lastXp = startXp
+    startTime, afk = os.time(), os.time()
+    lastTimeGainedXp = os.time()
+end
 
 -- Rounds a number to the nearest integer or to a specified number of decimal places.
 local function round(val, decimal)
@@ -158,7 +159,28 @@ function drawGUI()
     DrawProgressBar(IGP)
 end
 
-setupGUI()
+local comboBoxSelect = API.CreateIG_answer()
+
+local function setupOptions()
+    comboBoxSelect.box_name = "Portables"
+    comboBoxSelect.box_start = FFPOINT.new(1,60,0)
+    comboBoxSelect.stringsArr = {}
+    comboBoxSelect.box_size = FFPOINT.new(440, 0, 0)
+
+    table.insert(comboBoxSelect.stringsArr, "Select an option")
+
+    for i, option in ipairs(portableOptions) do
+        table.insert(comboBoxSelect.stringsArr, option)
+    end
+
+    API.DrawComboBox(comboBoxSelect, false)
+end
+
+if chosenPortable == -1 then
+    setupOptions()
+else 
+    resetStats() 
+end
 
 function waitUntil(x, timeout)
     start = os.time()
@@ -204,7 +226,7 @@ end
 --Checks whether we have at least `amount` of each item
 local function hasAllItems()
     for i = 1, #itemList do
-		if itemList[i].id == nil then
+        if itemList[i].id == nil then
             print("Error: undefined item id: probably didn't add the item's id to the ID table, stopping script")
             API.Write_LoopyLoop(false)
             return false
@@ -217,43 +239,65 @@ local function hasAllItems()
     return true
 end
 
+local hasSetupGUI = false
+
 API.Write_LoopyLoop(true)
 while (API.Read_LoopyLoop()) do
-    drawGUI()
-    printProgressReport()
-    API.DoRandomEvents()
 
-    --stop script if no exp gained in the past 60s
-    if (os.time() - lastTimeGainedXp) > 60 then
-        API.Write_LoopyLoop(false)
-    elseif hasAllItems() then
-        if API.BankOpen2() then
-            loadPreset()
-        else 
-            --The script currently doesn't validate whether the selected item in the creation interface is the correct item
-            --which could be a problem if there are multiple items that use the same ingredients
-            print("Interacting with portable")
-            if API.DoAction_Object1(PORTABLES[chosenPortable].action, 0, { PORTABLES[chosenPortable].id }, 5) then
-                print("Waiting for creation interface")
-                if waitUntil(creationInterfaceOpen, 5) then
-                    API.KeyboardPress32(0x20,0) --press Space
-                    print("Waiting for processing to begin")
-                    if waitUntil(API.isProcessing, 5) then
-                        waitWhileProcessing(processingTimeout)
-                    end
-                end
-            else
-                print("Unable to find portable")
-                API.RandomSleep2(1000, 100, 200)
+    if (comboBoxSelect.return_click) then
+        comboBoxSelect.return_click = false
+        
+        for i, option in ipairs(portableOptions) do
+            if (comboBoxSelect.string_value == option) then
+                print("Chose portable: ", option, "index: ", i)
+                chosenPortable = i
+                resetStats() 
             end
-        end    
-    elseif API.BankOpen2() then
-        loadPreset()
-    else
-        print("Opening bank")
-        if API.DoAction_Object1(0x2e, 80, { SCENE_OBJECTS.BANK_CHEST }, 5) then
-            print("Waiting for bank open")
-            waitUntil(API.BankOpen2, 5)
+        end
+    end
+
+    if chosenPortable ~= -1 then
+        if not hasSetupGUI then
+            setupGUI()
+            hasSetupGUI = true
+        end
+
+        drawGUI()
+        printProgressReport()
+        API.DoRandomEvents()
+        
+        --stop script if no exp gained in the past 60s
+        if (os.time() - lastTimeGainedXp) > 60 then
+            API.Write_LoopyLoop(false)
+        elseif hasAllItems() then
+            if API.BankOpen2() then
+                loadPreset()
+            else 
+                --The script currently doesn't validate whether the selected item in the creation interface is the correct item
+                --which could be a problem if there are multiple items that use the same ingredients i.e. urns
+                print("Interacting with portable")
+                if API.DoAction_Object1(PORTABLES[chosenPortable].action, 0, { PORTABLES[chosenPortable].id }, 5) then
+                    print("Waiting for creation interface")
+                    if waitUntil(creationInterfaceOpen, 5) then
+                        API.KeyboardPress32(0x20,0) --press Space
+                        print("Waiting for processing to begin")
+                        if waitUntil(API.isProcessing, 5) then
+                            waitWhileProcessing(processingTimeout)
+                        end
+                    end
+                else
+                    print("Unable to find portable")
+                    API.RandomSleep2(1000, 100, 200)
+                end
+            end    
+        elseif API.BankOpen2() then
+            loadPreset()
+        else
+            print("Opening bank")
+            if API.DoAction_Object1(0x2e, 80, { SCENE_OBJECTS.BANK_CHEST }, 5) then
+                print("Waiting for bank open")
+                waitUntil(API.BankOpen2, 5)
+            end
         end
     end
     
