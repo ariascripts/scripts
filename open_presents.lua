@@ -1,4 +1,4 @@
-local API = require("./libraries/api")
+local API = require("api")
 
 local supportedLamps = {[36073]=true, [36074]=true, [36075]=true, [36076]=true, [35450]=true, [35451]=true, [35452]=true, [35453]=true}
 
@@ -79,6 +79,14 @@ while API.Read_LoopyLoop() do
             API.DoAction_Interface(0xffffffff,0xffffffff,0,1263,74,skill_index,API.OFF_ACT_GeneralInterface_Choose_option) --Confirm
             API.DoAction_Interface(0xffffffff,0xffffffff,1,1263,ignore,-1,API.OFF_ACT_GeneralInterface_route) --select skill
         end
+    elseif lamp ~= nil then
+        print("Interacting with lamp")
+        if API.DoAction_Interface(0x2e,lamp.itemid1,1,1473,5,lamp.index,API.OFF_ACT_GeneralInterface_route) then
+            local f = function()
+                return API.VB_FindPSett(2874).SumOfstate == 18 or count ~= API.Invfreecount_()
+            end
+            waitUntil(f, 5)
+        end
     elseif count <= 3 then
         --script could get stuck here if the user started it with an inventory of lamps/stars that can't be deposited
         if API.InvStackSize(40932) > 0 then
@@ -88,14 +96,6 @@ while API.Read_LoopyLoop() do
         print("Opening bank")
         if API.DoAction_Object1(0x2e,80,{ 118606 },50) then
             waitUntil(API.BankOpen2, 5)
-        end
-    elseif lamp ~= nil then
-        print("Interacting with lamp")
-        if API.DoAction_Interface(0x2e,lamp.itemid1,1,1473,5,lamp.index,API.OFF_ACT_GeneralInterface_route) then
-            local f = function()
-                return API.VB_FindPSett(2874).SumOfstate == 18 or count ~= API.Invfreecount_()
-            end
-            waitUntil(f, 5)
         end
     elseif API.VB_FindPSett(2874).SumOfstate == 18 then
         if isUseAllMenuVisible() then
@@ -111,7 +111,10 @@ while API.Read_LoopyLoop() do
         end
     elseif API.InvItemcountStack_String("Present") > 0 then
         print("Using presents")
-        interact("Christmas Present", 0x31, 1, 5,API.OFF_ACT_GeneralInterface_route)
+        for i = 0, 30 do
+            interact("Christmas Present", 0x31, 1, 5,API.OFF_ACT_GeneralInterface_route)
+            API.RandomSleep2(100, 50, 50)
+        end
     else
         print("Stopping script, no presents found")
         API.Write_LoopyLoop(false)
