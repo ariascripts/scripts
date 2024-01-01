@@ -97,18 +97,6 @@ while API.Read_LoopyLoop() do
         if API.DoAction_Object1(0x2e,80,{ 118606 },50) then
             waitUntil(API.BankOpen2, 5)
         end
-    elseif API.VB_FindPSett(2874).SumOfstate == 18 then
-        if isUseAllMenuVisible() then
-            API.DoAction_Interface(0xffffffff,0xffffffff,0,678,19,-1,API.OFF_ACT_GeneralInterface_Choose_option) --select use all, this will cause me to get stuck if I don't have multiple lamps/stars
-            API.RandomSleep2(600, 100, 200)
-            API.DoAction_Interface(0xffffffff,0xffffffff,1,1263,skill_index,-1,API.OFF_ACT_GeneralInterface_route) --select skill
-            API.RandomSleep2(600, 100, 200)
-            API.DoAction_Interface(0xffffffff,0xffffffff,0,1263,74,skill_index_2,API.OFF_ACT_GeneralInterface_Choose_option) --Confirm
-        else     
-            API.DoAction_Interface(0xffffffff,0xffffffff,1,1263,skill_index,-1,API.OFF_ACT_GeneralInterface_route) --select skill
-            API.RandomSleep2(300, 100, 200)
-            API.DoAction_Interface(0xffffffff,0xffffffff,0,1263,74,skill_index_2,API.OFF_ACT_GeneralInterface_Choose_option) --Confirm
-        end
     elseif API.InvItemcountStack_String("Present") > 0 then
         print("Using presents")
         for i = 0, 30 do
