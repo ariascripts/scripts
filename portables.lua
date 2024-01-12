@@ -2,7 +2,7 @@
     @name Alpha Portables
     @description Automates tasks at portable skilling stations (ideally at W84 Fort Forinthry)
     @author Aria
-    @version 1.1
+    @version 1.2
 ]]
 
 local API = require("api")
@@ -14,6 +14,7 @@ local SCENE_OBJECTS = {
     RANGE = 89768,
     WELL = 89770,
     CRAFTER = 106595,
+    BRAZIER = 106601, --could also be 106602
 
     BANK_CHEST = 125115, --Fort Forinthry bank chest
     WORKROOM_BANK_CHEST = 125734 --Fort Forinthry workroom bank chest
@@ -24,16 +25,17 @@ local PORTABLES = {
     {id = SCENE_OBJECTS.FLETCHER, action = 0x29, skill = "FLETCHING"},
     {id = SCENE_OBJECTS.RANGE, action = 0x40, skill = "COOKING"},
     {id = SCENE_OBJECTS.WELL, action = 0x29, skill = "HERBLORE"},
-    {id = SCENE_OBJECTS.CRAFTER, action = 0x29, skill = "CRAFTING"}
+    {id = SCENE_OBJECTS.CRAFTER, action = 0x29, skill = "CRAFTING"},
+    {id = SCENE_OBJECTS.BRAZIER, action = 0x29, skill = "FIREMAKING"}
 }
 
 --#region User Inputs, don't modify this if you don't know what you're doing
 local loadPresetKey = 0x32 --The 2 key
---Change this value to 1 = workbench, 2 = fletcher, 3 = range, 4 = well, 5 = crafter if you don't want to have to select the portable you're using each time
+--Change this value to 1 = workbench, 2 = fletcher, 3 = range, 4 = well, 5 = crafter, 6 = brazier if you don't want to have to select the portable you're using each time
 local chosenPortable = -1
 --Max time to remain in the "processing" state before attempting to interact again
 --You may want to change the timeout (in seconds) depending on the skill you are training
-local processingTimeout = 250 
+local processingTimeout = 250
 
 --add the ids of the items you are processing to the table below, click "Inv" in the debug menu to view the ids of the items in the inventory
 local ID = {
@@ -43,14 +45,14 @@ local ID = {
     GRENWALL_SPIKES = 12539,
 
     UNCUT_DRAGONSTONE = 1631,
-    
+
     ASCENSION_SHARD = 28436,
 
     PROTEAN_PLANK = 30037,
 }
 
 --Add the items you are processing to this list
-itemList = {} 
+itemList = {}
 --Example for cooking raw green jellyfish
 --itemList[1] = { id = ID.RAW_GREEN_JELLYFISH, amount = 28 }
 
@@ -68,7 +70,7 @@ if not itemList[1] then
     for i = 1, #vec do
       if not added[vec[i].itemid1] and vec[i].itemid1 > 0 then
         local amt = math.max(API.InvItemcount_1(vec[i].itemid1), API.InvStackSize(vec[i].itemid1))
-        itemList[#itemList + 1] = { id = vec[i].itemid1, amount = amt } 
+        itemList[#itemList + 1] = { id = vec[i].itemid1, amount = amt }
         print("Added item: " .. vec[i].textitem .. " (" .. vec[i].itemid1 .. ") with amount " .. amt)
         added[vec[i].itemid1] = true
       end
@@ -76,14 +78,14 @@ if not itemList[1] then
     --print("Please add the items you are processing")
 end
 
-local portableOptions = { "Workbench", "Fletcher", "Range", "Well", "Crafter" }
+local portableOptions = { "Workbench", "Fletcher", "Range", "Well", "Crafter", "Brazier" }
 
 startXp = 0 --API.GetSkillXP(PORTABLES[chosenPortable].skill)
 lastXp = startXp
 startTime, afk = os.time(), os.time()
 lastTimeGainedXp = os.time()
 
-local function resetStats() 
+local function resetStats()
     startXp = API.GetSkillXP(PORTABLES[chosenPortable].skill)
     lastXp = startXp
     startTime, afk = os.time(), os.time()
@@ -178,8 +180,8 @@ end
 
 if chosenPortable == -1 then
     setupOptions()
-else 
-    resetStats() 
+else
+    resetStats()
 end
 
 function waitUntil(x, timeout)
@@ -194,7 +196,7 @@ function getCreationInterfaceSelectedItemID()
     return API.VB_FindPSett(1170, 0).SumOfstate
 end
 
-function creationInterfaceOpen() 
+function creationInterfaceOpen()
     return getCreationInterfaceSelectedItemID() ~= -1
 end
 
@@ -246,12 +248,12 @@ while (API.Read_LoopyLoop()) do
 
     if (comboBoxSelect.return_click) then
         comboBoxSelect.return_click = false
-        
+
         for i, option in ipairs(portableOptions) do
             if (comboBoxSelect.string_value == option) then
                 print("Chose portable: ", option, "index: ", i)
                 chosenPortable = i
-                resetStats() 
+                resetStats()
             end
         end
     end
@@ -265,31 +267,37 @@ while (API.Read_LoopyLoop()) do
         drawGUI()
         printProgressReport()
         API.DoRandomEvents()
-        
+
         --stop script if no exp gained in the past 60s
         if (os.time() - lastTimeGainedXp) > 60 then
             API.Write_LoopyLoop(false)
+        elseif API.isProcessing() or (PORTABLES[chosenPortable].id == SCENE_OBJECTS.BRAZIER and API.CheckAnim(100)) then
+            API.RandomSleep2(600, 50, 100)
         elseif hasAllItems() then
             if API.BankOpen2() then
                 loadPreset()
-            else 
+            else
                 --The script currently doesn't validate whether the selected item in the creation interface is the correct item
                 --which could be a problem if there are multiple items that use the same ingredients i.e. urns
                 print("Interacting with portable")
                 if API.DoAction_Object1(PORTABLES[chosenPortable].action, 0, { PORTABLES[chosenPortable].id }, 5) then
-                    print("Waiting for creation interface")
-                    if waitUntil(creationInterfaceOpen, 5) then
-                        API.KeyboardPress32(0x20,0) --press Space
-                        print("Waiting for processing to begin")
-                        if waitUntil(API.isProcessing, 5) then
-                            waitWhileProcessing(processingTimeout)
+                    if PORTABLES[chosenPortable].id == SCENE_OBJECTS.BRAZIER then
+                        print("Waiting for animation")
+		                API.RandomSleep2(1000, 50, 100)
+                    else
+                        print("Waiting for creation interface")
+                        if waitUntil(creationInterfaceOpen, 5) then
+                            API.KeyboardPress32(0x20,0) --press Space
+                            print("Waiting for processing to begin")
+                            waitUntil(API.isProcessing, 5)
                         end
                     end
+
                 else
                     print("Unable to find portable")
                     API.RandomSleep2(1000, 100, 200)
                 end
-            end    
+            end
         elseif API.BankOpen2() then
             loadPreset()
         else
@@ -300,6 +308,6 @@ while (API.Read_LoopyLoop()) do
             end
         end
     end
-    
+
     API.RandomSleep2(100, 10, 20)
 end
