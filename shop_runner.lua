@@ -78,7 +78,7 @@ local function buyBabaYaga()
     if inBabaYagaHouse() then
         if not SHOP.isOpen() then
             print("Interacting with Baba Yaga")
-            if API.DoAction_NPC(0x29,3328,{ NPCS.BABA_YAGA }, 100) then
+            if API.DoAction_NPC(0x29,API.OFF_ACT_InteractNPC_route2,{ NPCS.BABA_YAGA }, 100) then
                 waitUntil(SHOP.isOpen, 5)
             end
         else
@@ -89,7 +89,7 @@ local function buyBabaYaga()
         end
     elseif #API.GetAllObjArrayInteract({ NPCS.BABA_YAGA_HOUSE }, 100, 1) > 0 then
         print("Entering Baba Yaga's house")
-        if API.DoAction_NPC(0x29,3120,{ NPCS.BABA_YAGA_HOUSE }, 100) then
+        if API.DoAction_NPC(0x29,API.OFF_ACT_InteractNPC_route,{ NPCS.BABA_YAGA_HOUSE }, 100) then
             waitUntil(inBabaYagaHouse, 30)
         end
     else 
@@ -101,7 +101,7 @@ local function buyClara()
     if #API.GetAllObjArrayInteract({ NPCS.CLARA }, 100, 1) > 0 then
         if not SHOP.isOpen() then
             print("Interacting with Clara")
-            if API.DoAction_NPC(0x29,3328,{ NPCS.CLARA }, 100) then
+            if API.DoAction_NPC(0x29,API.OFF_ACT_InteractNPC_route2,{ NPCS.CLARA }, 100) then
                 waitUntil(SHOP.isOpen, 30)
             end
         else
@@ -119,7 +119,7 @@ local function buyAnachronia()
     if #API.GetAllObjArrayInteract({ NPCS.ANACHRONIA_RUNE_SELLER }, 100, 1) > 0 then
         if not SHOP.isOpen() then
             print("Interacting with Anachronia rune seller")
-            if API.DoAction_NPC(0x29,3120,{ NPCS.ANACHRONIA_RUNE_SELLER }, 100) then
+            if API.DoAction_NPC(0x29,API.OFF_ACT_InteractNPC_route,{ NPCS.ANACHRONIA_RUNE_SELLER }, 100) then
                 waitUntil(SHOP.isOpen, 30)
             end
         else
