@@ -187,7 +187,7 @@ end
 function waitUntil(x, timeout)
     start = os.time()
     while not x() and start + timeout > os.time() do
-        API.RandomSleep2(600, 200, 200)
+        API.RandomSleep2(300, 50, 50)
     end
     return start + timeout > os.time()
 end
@@ -202,21 +202,6 @@ end
 
 function notInBank()
     return not API.BankOpen2()
-end
-
-local function waitWhileProcessing(timeout)
-    local startTime = os.time()
-    print("Waiting for items to be processed")
-    while os.time() - startTime < timeout do
-        if not isProcessing() then
-            return true
-        end
-        API.DoRandomEvents()
-        printProgressReport()
-
-        API.RandomSleep2(600, 200, 200)
-    end
-    return false
 end
 
 local function loadPreset()
@@ -268,10 +253,11 @@ while (API.Read_LoopyLoop()) do
         printProgressReport()
         API.DoRandomEvents()
 
-        --stop script if no exp gained in the past 60s
-        if (os.time() - lastTimeGainedXp) > 60 then
+        --stop script if no exp gained in the past 30s
+        if (os.time() - lastTimeGainedXp) > 30 then
+            print("No exp gained in the last 30 seconds")
             API.Write_LoopyLoop(false)
-        elseif API.isProcessing() or (PORTABLES[chosenPortable].id == SCENE_OBJECTS.BRAZIER and API.CheckAnim(100)) then
+        elseif API.isProcessing() or (PORTABLES[chosenPortable].id == SCENE_OBJECTS.BRAZIER and API.CheckAnim(200)) then
             API.RandomSleep2(600, 50, 100)
         elseif hasAllItems() then
             if API.BankOpen2() then
@@ -292,7 +278,6 @@ while (API.Read_LoopyLoop()) do
                             waitUntil(API.isProcessing, 5)
                         end
                     end
-
                 else
                     print("Unable to find portable")
                     API.RandomSleep2(1000, 100, 200)
@@ -300,6 +285,11 @@ while (API.Read_LoopyLoop()) do
             end
         elseif API.BankOpen2() then
             loadPreset()
+        elseif API.VB_FindPSett(9932, 0).SumOfstate > 0 then
+            print("Loading last preset")
+            if API.DoAction_Object1(0x33, 240, { SCENE_OBJECTS.BANK_CHEST }, 5) then
+                waitUntil(hasAllItems, 2)
+            end
         else
             print("Opening bank")
             if API.DoAction_Object1(0x2e, 80, { SCENE_OBJECTS.BANK_CHEST }, 5) then
