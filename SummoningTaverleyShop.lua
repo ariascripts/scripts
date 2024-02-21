@@ -57,15 +57,15 @@ local function getDepositBoxes()
 end
 
 local function getSelectedTab()
-    return API.VB_FindPSett(303, 0, 0).state
+    return API.VB_FindPSettinOrder(303, 0).state
 end
 
 local function getCreationInterfaceSelectedItemID()
-    return API.VB_FindPSett(1170, 0, 0).state
+    return API.VB_FindPSettinOrder(1170, 0).state
 end
 
 local function getSelectedItemIndex()
-    return API.VB_FindPSett(1031, 1, 0).state
+    return API.VB_FindPSettinOrder(1031, 1).state
 end
 
 local function isCreationInterfaceOpen()
