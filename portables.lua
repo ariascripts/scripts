@@ -193,7 +193,7 @@ function waitUntil(x, timeout)
 end
 
 function getCreationInterfaceSelectedItemID()
-    return API.VB_FindPSett(1170, 0, 0).state
+    return API.VB_FindPSettinOrder(1170, 0).state
 end
 
 function creationInterfaceOpen()
@@ -285,7 +285,7 @@ while (API.Read_LoopyLoop()) do
             end
         elseif API.BankOpen2() then
             loadPreset()
-        elseif API.VB_FindPSett(9932, 0, 0).state > 0 then
+        elseif API.VB_FindPSettinOrder(9932, 0).state > 0 then
             print("Loading last preset")
             if API.DoAction_Object1(0x33, 240, { SCENE_OBJECTS.BANK_CHEST }, 5) then
                 waitUntil(hasAllItems, 2)
