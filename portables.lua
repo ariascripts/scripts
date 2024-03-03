@@ -52,7 +52,7 @@ local ID = {
 }
 
 --Add the items you are processing to this list
-itemList = {}
+local itemList = {}
 --Example for cooking raw green jellyfish
 --itemList[1] = { id = ID.RAW_GREEN_JELLYFISH, amount = 28 }
 
@@ -80,16 +80,28 @@ end
 
 local portableOptions = { "Workbench", "Fletcher", "Range", "Well", "Crafter", "Brazier" }
 
-startXp = 0 --API.GetSkillXP(PORTABLES[chosenPortable].skill)
-lastXp = startXp
-startTime, afk = os.time(), os.time()
-lastTimeGainedXp = os.time()
+local MAX_IDLE_TIME_MINUTES = 5
+local startXp = 0 --API.GetSkillXP(PORTABLES[chosenPortable].skill)
+local lastXp = startXp
+local startTime, afk = os.time(), os.time()
+local lastTimeGainedXp = os.time()
 
 local function resetStats()
     startXp = API.GetSkillXP(PORTABLES[chosenPortable].skill)
     lastXp = startXp
     startTime, afk = os.time(), os.time()
     lastTimeGainedXp = os.time()
+end
+
+--credit Higgins
+local function idleCheck()
+    local timeDiff = os.difftime(os.time(), afk)
+    local randomTime = math.random((MAX_IDLE_TIME_MINUTES * 60) * 0.6, (MAX_IDLE_TIME_MINUTES * 60) * 0.9)
+
+    if timeDiff > randomTime then
+        API.PIdle2()
+        afk = os.time()
+    end
 end
 
 -- Rounds a number to the nearest integer or to a specified number of decimal places.
@@ -101,7 +113,7 @@ local function round(val, decimal)
     end
 end
 
-function formatNumber(num)
+local function formatNumber(num)
     if num >= 1e6 then
         return string.format("%.1fM", num / 1e6)
     elseif num >= 1e3 then
@@ -157,7 +169,7 @@ local function setupGUI()
     IGP.string_value = PORTABLES[chosenPortable].skill
 end
 
-function drawGUI()
+local function drawGUI()
     DrawProgressBar(IGP)
 end
 
@@ -184,23 +196,23 @@ else
     resetStats()
 end
 
-function waitUntil(x, timeout)
-    start = os.time()
+local function waitUntil(x, timeout)
+    local start = os.time()
     while not x() and start + timeout > os.time() do
         API.RandomSleep2(300, 50, 50)
     end
     return start + timeout > os.time()
 end
 
-function getCreationInterfaceSelectedItemID()
+local function getCreationInterfaceSelectedItemID()
     return API.VB_FindPSettinOrder(1170, 0).state
 end
 
-function creationInterfaceOpen()
+local function creationInterfaceOpen()
     return getCreationInterfaceSelectedItemID() ~= -1
 end
 
-function notInBank()
+local function notInBank()
     return not API.BankOpen2()
 end
 
@@ -230,6 +242,7 @@ local hasSetupGUI = false
 
 API.Write_LoopyLoop(true)
 while (API.Read_LoopyLoop()) do
+    idleCheck()
 
     if (comboBoxSelect.return_click) then
         comboBoxSelect.return_click = false
