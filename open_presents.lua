@@ -4,20 +4,20 @@ local supportedLamps = {[36073]=true, [36074]=true, [36075]=true, [36076]=true, 
 
 local function isUseAllMenuVisible()
     local ic = API.ScanForInterfaceTest2Get(false, {
-        InterfaceComp5.new(678,3,-1,-1,0), 
-        InterfaceComp5.new(678,1,-1,3,0), 
-        InterfaceComp5.new(678,19,-1,1,0), 
-        InterfaceComp5.new(678,29,-1,19,0), 
-        InterfaceComp5.new(678,30,-1,29,0)
+        InterfaceComp5.new(678,3,-1,-1),
+        InterfaceComp5.new(678,1,-1,3),
+        InterfaceComp5.new(678,19,-1,1),
+        InterfaceComp5.new(678,29,-1,19),
+        InterfaceComp5.new(678,30,-1,29)
     })
     if (#ic > 0) then
         local s = string.sub(API.ReadCharsPointer(ic[1].memloc + API.I_itemids3), 1, 18)
         return string.len(s) > 1
-    end   
+    end
 end
 
-function waitUntil(x, timeout)
-    start = os.time()
+local function waitUntil(x, timeout)
+    local start = os.time()
     while not x() and start + timeout > os.time() do
         API.RandomSleep2(300, 100, 100)
     end
@@ -25,10 +25,28 @@ function waitUntil(x, timeout)
 end
 
 local function interact(itemName, action, o1, o2, route)
-    local vec = API.ReadInvArrays33()   
+    local vec = API.ReadInvArrays33()
     for i = 1, #vec do
         if vec[i].itemid1 > 0 and string.find(vec[i].textitem, itemName) then
             return API.DoAction_Interface(action,vec[i].itemid1,o1,1473,o2,vec[i].index,route)
+        end
+    end
+end
+
+local function openBank()
+    print("Opening bank")
+    if API.DoAction_Object1(0x2e,80,{ 118606 },50) then
+        waitUntil(API.BankOpen2, 5)
+    end
+end
+
+local function spamClickPresents()
+    print("Using presents")
+    for i = 0, 30 do
+        interact("Christmas Present", 0x31, 1, 5,API.OFF_ACT_GeneralInterface_route)
+        API.RandomSleep2(100, 50, 50)
+        if API.Invfreecount_() <= 3 then
+            break
         end
     end
 end
@@ -54,7 +72,7 @@ while API.Read_LoopyLoop() do
     local count = API.Invfreecount_()
     local vec = API.ReadInvArrays33()
     local lamp = nil
-        
+
     for i = 1, #vec do
         if vec[i].itemid1 > 0 and supportedLamps[vec[i].itemid1] then
             lamp = vec[i]
@@ -66,8 +84,8 @@ while API.Read_LoopyLoop() do
         print("Banking inventory")
         API.KeyboardPress32(0x33,0) --press 3 to deposit inventory
         API.RandomSleep2(600, 100, 100)
-        interact("Christmas Present", 0x31, 1, 5,API.OFF_ACT_GeneralInterface_route)
-    elseif API.VB_FindPSett(2874).SumOfstate == 18 then
+        spamClickPresents()
+    elseif API.Compare2874Status(18, false) then
         --make sure no login announcements, random menus, etc are visible
         if isUseAllMenuVisible() then
             API.DoAction_Interface(0xffffffff,0xffffffff,0,678,19,-1,API.OFF_ACT_GeneralInterface_Choose_option) --select use all, this will cause me to get stuck if I don't have multiple lamps/stars
@@ -75,7 +93,7 @@ while API.Read_LoopyLoop() do
             API.DoAction_Interface(0xffffffff,0xffffffff,1,1263,ignore,-1,API.OFF_ACT_GeneralInterface_route) --select skill
             API.RandomSleep2(600, 100, 200)
             API.DoAction_Interface(0xffffffff,0xffffffff,0,1263,74,skill_index,API.OFF_ACT_GeneralInterface_Choose_option) --Confirm
-        else     
+        else
             API.DoAction_Interface(0xffffffff,0xffffffff,0,1263,74,skill_index,API.OFF_ACT_GeneralInterface_Choose_option) --Confirm
             API.DoAction_Interface(0xffffffff,0xffffffff,1,1263,ignore,-1,API.OFF_ACT_GeneralInterface_route) --select skill
         end
@@ -83,7 +101,7 @@ while API.Read_LoopyLoop() do
         print("Interacting with lamp")
         if API.DoAction_Interface(0x2e,lamp.itemid1,1,1473,5,lamp.index,API.OFF_ACT_GeneralInterface_route) then
             local f = function()
-                return API.VB_FindPSett(2874).SumOfstate == 18 or count ~= API.Invfreecount_()
+                return API.Compare2874Status(18, false) or count ~= API.Invfreecount_()
             end
             waitUntil(f, 5)
         end
@@ -92,21 +110,14 @@ while API.Read_LoopyLoop() do
         if API.InvStackSize(40932) > 0 then
             interact("Oddments", 0x24, 3, 5,API.OFF_ACT_GeneralInterface_route)
         end
-
-        print("Opening bank")
-        if API.DoAction_Object1(0x2e,80,{ 118606 },50) then
-            waitUntil(API.BankOpen2, 5)
-        end
+        openBank()
     elseif API.InvItemcountStack_String("Present") > 0 then
-        print("Using presents")
-        for i = 0, 30 do
-            interact("Christmas Present", 0x31, 1, 5,API.OFF_ACT_GeneralInterface_route)
-            API.RandomSleep2(100, 50, 50)
-        end
+        spamClickPresents()
+        openBank()
     else
         print("Stopping script, no presents found")
         API.Write_LoopyLoop(false)
     end
-    
+
     API.RandomSleep2(100, 100, 100)
 end
