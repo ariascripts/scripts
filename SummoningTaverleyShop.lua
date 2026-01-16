@@ -57,15 +57,15 @@ local function getDepositBoxes()
 end
 
 local function getSelectedTab()
-    return API.VB_FindPSettinOrder(303, 0).state
+    return API.VB_FindPSettinOrder(303).state
 end
 
 local function getCreationInterfaceSelectedItemID()
-    return API.VB_FindPSettinOrder(1170, 0).state
+    return API.VB_FindPSettinOrder(1170).state
 end
 
 local function getSelectedItemIndex()
-    return API.VB_FindPSettinOrder(1031, 1).state
+    return API.VB_FindPSettinOrder(1031).state
 end
 
 local function isCreationInterfaceOpen()
@@ -86,19 +86,7 @@ end
 
 API.Write_LoopyLoop(true)
 while API.Read_LoopyLoop() do
-    if API.InvItemcount_1(curr.pouch_id) > 0 then
-        --[[local boxes = getDepositBoxes()
-        if #boxes > 0 then
-            if API.Compare2874Status(69, false) then
-                API.DoAction_Interface(0x24,0xffffffff,1,11,5,-1,API.OFF_ACT_GeneralInterface_route) --deposit inventory button in portable deposit box
-            else
-                API.DoAction_Object1(0x29,0,{ boxes[1].Id },50)
-            end
-            API.RandomSleep2(300, 50, 50)
-        else
-            print("No boxes detected")
-            API.RandomSleep2(600, 100, 100)
-        end]]
+    if Inventory:GetItemAmount(curr.pouch_id) > 0 then
         local vec = API.ReadInvArrays33()
         if getSelectedItemIndex() > 0 then
             print("Using notepaper on pouch")
@@ -123,13 +111,13 @@ while API.Read_LoopyLoop() do
         print("Walking next to obelisk")
         API.DoAction_Tile(SUMMONING_SHOP)
         API.RandomSleep2(600, 100, 100)
-    elseif API.InvItemcount_1(curr.secondary_unnoted) >= 20 then
+    elseif Inventory:GetItemAmount(curr.secondary_unnoted) >= 20 then
         if isCreationInterfaceOpen() then
             API.KeyboardPress32(0x20, 0) --press Space
             API.RandomSleep2(300, 300, 300)
         else
             print("Interacting with obelisk")
-            if API.DoAction_Object1(0x29, 0, { 67036 }, 50) then
+            if API.DoAction_Object1(0x29, API.OFF_ACT_GeneralObject_route0, { 67036 }, 50) then
                 API.RandomSleep2(600, 100, 100)
             end
         end
@@ -175,3 +163,4 @@ while API.Read_LoopyLoop() do
 
     API.RandomSleep2(100, 100, 100)
 end
+
