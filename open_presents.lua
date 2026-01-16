@@ -35,7 +35,7 @@ end
 
 local function openBank()
     print("Opening bank")
-    if API.DoAction_Object1(0x2e,80,{ 118606 },50) then
+    if API.DoAction_Object1(0x2e,API.OFF_ACT_GeneralObject_route1,{ 118606 },50) then
         waitUntil(API.BankOpen2, 5)
     end
 end
@@ -97,6 +97,7 @@ while API.Read_LoopyLoop() do
             API.DoAction_Interface(0xffffffff,0xffffffff,0,1263,74,skill_index,API.OFF_ACT_GeneralInterface_Choose_option) --Confirm
             API.DoAction_Interface(0xffffffff,0xffffffff,1,1263,ignore,-1,API.OFF_ACT_GeneralInterface_route) --select skill
         end
+    --users should configure automatic lamp usage in present settings to avoid having to use lamps/stars
     elseif lamp ~= nil then
         print("Interacting with lamp")
         if API.DoAction_Interface(0x2e,lamp.itemid1,1,1473,5,lamp.index,API.OFF_ACT_GeneralInterface_route) then
@@ -107,11 +108,11 @@ while API.Read_LoopyLoop() do
         end
     elseif count <= 3 then
         --script could get stuck here if the user started it with an inventory of lamps/stars that can't be deposited
-        if API.InvStackSize(40932) > 0 then
+        if Inventory.InvStackSize(40932) > 0 then
             interact("Oddments", 0x24, 3, 5,API.OFF_ACT_GeneralInterface_route)
         end
         openBank()
-    elseif API.InvItemcountStack_String("Present") > 0 then
+    elseif Inventory:GetItemAmount("Present") > 0 then
         spamClickPresents()
         openBank()
     else
@@ -121,3 +122,4 @@ while API.Read_LoopyLoop() do
 
     API.RandomSleep2(100, 100, 100)
 end
+
