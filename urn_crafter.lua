@@ -82,13 +82,13 @@ if unfiredUrnId == -1 then
 end
 
 local function interactCrafter()
-    local crafterConfig = (API.VB_FindPSettinOrder(6451, -1).state & 3072) >> 10
+    local crafterConfig = (API.VB_FindPSettinOrder(6451).state & 3072) >> 10
     --print("[Debug] Curr crafter configuration: " .. crafterConfig)
-    local offset = 0
+    local offset = API.OFF_ACT_GeneralObject_route0
     if crafterConfig == 0 or crafterConfig == 1 then --left click = craft/gems
-        offset = 160
+        offset = API.OFF_ACT_GeneralObject_route2
     elseif crafterConfig == 3 then --left click = leather
-        offset = 240
+        offset = API.OFF_ACT_GeneralObject_route3
     end
 
     print("Interacting with crafter")
@@ -125,7 +125,7 @@ while (API.Read_LoopyLoop()) do
     elseif unfiredUrnId == -1 then
         print("Waiting for user to select urn")
         API.RandomSleep2(600, 50, 100)
-    elseif API.InvItemcount_1(unfiredUrnId) >= 28 then
+    elseif Inventory:GetItemAmount(unfiredUrnId) >= 28 then
         if CreationInterface.isOpen() then
             if CreationInterface.selectAndProcess(finishedUrnId, urnCategory) then
                 waitUntil(API.isProcessing, 5)
@@ -136,7 +136,7 @@ while (API.Read_LoopyLoop()) do
         else
             interactCrafter()
         end
-    elseif API.InvItemcount_1(1761) >= 28 then
+    elseif Inventory:GetItemAmount(1761) >= 28 then
         if CreationInterface.isOpen() then
             if CreationInterface.selectAndProcess(unfiredUrnId, urnCategory) then
                 waitUntil(API.isProcessing, 5)
@@ -170,7 +170,7 @@ while (API.Read_LoopyLoop()) do
         end
     else
         print("Opening bank")
-        if API.DoAction_Object1(0x2e, 80, { BANK_CHEST_ID }, 5) then
+        if API.DoAction_Object1(0x2e, API.OFF_ACT_GeneralObject_route1, { BANK_CHEST_ID }, 5) then
             print("Waiting for bank open")
             waitUntil(API.BankOpen2, 5)
         end
@@ -178,3 +178,4 @@ while (API.Read_LoopyLoop()) do
 
     API.RandomSleep2(100, 10, 20)
 end
+
