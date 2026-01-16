@@ -68,8 +68,8 @@ if not itemList[1] then
     local added = {}
     local vec = API.ReadInvArrays33()
     for i = 1, #vec do
-      if not added[vec[i].itemid1] and vec[i].itemid1 > 0 then
-        local amt = math.max(API.InvItemcount_1(vec[i].itemid1), API.InvStackSize(vec[i].itemid1))
+      if not added[vec[i].itemid1] and vec[i].itemid1 > 0 and vec[i].stack_size > 0 then
+        local amt = vec[i].stack_size
         itemList[#itemList + 1] = { id = vec[i].itemid1, amount = amt }
         print("Added item: " .. vec[i].textitem .. " (" .. vec[i].itemid1 .. ") with amount " .. amt)
         added[vec[i].itemid1] = true
@@ -205,7 +205,7 @@ local function waitUntil(x, timeout)
 end
 
 local function getCreationInterfaceSelectedItemID()
-    return API.VB_FindPSettinOrder(1170, 0).state
+    return API.VB_FindPSettinOrder(1170).state
 end
 
 local function creationInterfaceOpen()
@@ -230,7 +230,7 @@ local function hasAllItems()
             API.Write_LoopyLoop(false)
             return false
         end
-        if API.InvItemcount_1(itemList[i].id) < itemList[i].amount and API.InvStackSize(itemList[i].id) < itemList[i].amount then
+        if Inventory:GetItemAmount(itemList[i].id) < itemList[i].amount and Inventory:InvStackSize(itemList[i].id) < itemList[i].amount then
             print("Not enough of item:", itemList[i].id)
             return false
         end
@@ -279,7 +279,7 @@ while (API.Read_LoopyLoop()) do
                 --The script currently doesn't validate whether the selected item in the creation interface is the correct item
                 --which could be a problem if there are multiple items that use the same ingredients i.e. urns
                 print("Interacting with portable")
-                if API.DoAction_Object1(PORTABLES[chosenPortable].action, 0, { PORTABLES[chosenPortable].id }, 5) then
+                if API.DoAction_Object1(PORTABLES[chosenPortable].action, API.OFF_ACT_GeneralObject_route0, { PORTABLES[chosenPortable].id }, 5) then
                     if PORTABLES[chosenPortable].id == SCENE_OBJECTS.BRAZIER then
                         print("Waiting for animation")
 		                API.RandomSleep2(1000, 50, 100)
@@ -298,14 +298,14 @@ while (API.Read_LoopyLoop()) do
             end
         elseif API.BankOpen2() then
             loadPreset()
-        elseif API.VB_FindPSettinOrder(9932, 0).state > 0 then
+        elseif API.VB_FindPSettinOrder(9932).state > 0 then
             print("Loading last preset")
-            if API.DoAction_Object1(0x33, 240, { SCENE_OBJECTS.BANK_CHEST }, 5) then
+            if API.DoAction_Object1(0x33, API.OFF_ACT_GeneralObject_route3, { SCENE_OBJECTS.BANK_CHEST }, 5) then
                 waitUntil(hasAllItems, 2)
             end
         else
             print("Opening bank")
-            if API.DoAction_Object1(0x2e, 80, { SCENE_OBJECTS.BANK_CHEST }, 5) then
+            if API.DoAction_Object1(0x2e, API.OFF_ACT_GeneralObject_route1, { SCENE_OBJECTS.BANK_CHEST }, 5) then
                 print("Waiting for bank open")
                 waitUntil(API.BankOpen2, 5)
             end
