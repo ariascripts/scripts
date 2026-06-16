@@ -2,7 +2,7 @@
     @name Alpha Portables
     @description Automates tasks at portable skilling stations (ideally at W84 Fort Forinthry)
     @author Aria
-    @version 1.2
+    @version 1.3
 ]]
 
 local API = require("api")
@@ -51,7 +51,8 @@ local ID = {
     PROTEAN_PLANK = 30037,
 }
 
---Add the items you are processing to this list
+--Add the items you are processing to the list below
+--If the list empty, the script will stop after 30 seconds without gaining exp or if you run out of any of the items that were in the inventory when starting the script
 local itemList = {}
 --Example for cooking raw green jellyfish
 --itemList[1] = { id = ID.RAW_GREEN_JELLYFISH, amount = 28 }
@@ -68,20 +69,21 @@ if not itemList[1] then
     local added = {}
     local vec = API.ReadInvArrays33()
     for i = 1, #vec do
-      if not added[vec[i].itemid1] and vec[i].itemid1 > 0 and vec[i].stack_size > 0 then
-        local amt = vec[i].stack_size
-        itemList[#itemList + 1] = { id = vec[i].itemid1, amount = amt }
-        print("Added item: " .. vec[i].textitem .. " (" .. vec[i].itemid1 .. ") with amount " .. amt)
+      if vec[i].itemid1 and not added[vec[i].itemid1] and vec[i].itemid1 > 0 and vec[i].itemid1_size > 0 then
+        --local amt = vec[i].itemid1_size
+        --itemList[#itemList + 1] = { id = vec[i].itemid1, amount = amt }
+        --print("Added item: " .. vec[i].textitem .. " (" .. vec[i].itemid1 .. ") with amount " .. amt)
+        itemList[#itemList + 1] = { id = vec[i].itemid1, amount = 1 }
+        print("Added item: " .. vec[i].textitem .. " (" .. vec[i].itemid1 .. ") with default amount of 1")
         added[vec[i].itemid1] = true
       end
     end
-    --print("Please add the items you are processing")
 end
 
 local portableOptions = { "Workbench", "Fletcher", "Range", "Well", "Crafter", "Brazier" }
 
 local MAX_IDLE_TIME_MINUTES = 5
-local startXp = 0 --API.GetSkillXP(PORTABLES[chosenPortable].skill)
+local startXp = 0
 local lastXp = startXp
 local startTime, afk = os.time(), os.time()
 local lastTimeGainedXp = os.time()
@@ -136,8 +138,8 @@ end
 local function calcProgressPercentage(skill, currentExp)
     local currentLevel = API.XPLevelTable(API.GetSkillXP(skill))
     if currentLevel == 120 then return 100 end
-    local nextLevelExp = XPForLevel(currentLevel + 1)
-    local currentLevelExp = XPForLevel(currentLevel)
+    local nextLevelExp = API.XPForLevel(currentLevel + 1)
+    local currentLevelExp = API.XPForLevel(currentLevel)
     local progressPercentage = (currentExp - currentLevelExp) / (nextLevelExp - currentLevelExp) * 100
     return math.floor(progressPercentage)
 end
@@ -170,7 +172,7 @@ local function setupGUI()
 end
 
 local function drawGUI()
-    DrawProgressBar(IGP)
+   API.DrawProgressBar(IGP)
 end
 
 local comboBoxSelect = API.CreateIG_answer()
@@ -205,7 +207,7 @@ local function waitUntil(x, timeout)
 end
 
 local function getCreationInterfaceSelectedItemID()
-    return API.VB_FindPSettinOrder(1170).state
+    return API.VB_FindPSett(1170).state
 end
 
 local function creationInterfaceOpen()
@@ -298,7 +300,7 @@ while (API.Read_LoopyLoop()) do
             end
         elseif API.BankOpen2() then
             loadPreset()
-        elseif API.VB_FindPSettinOrder(9932).state > 0 then
+        elseif API.VB_FindPSett(9932).state > 0 then
             print("Loading last preset")
             if API.DoAction_Object1(0x33, API.OFF_ACT_GeneralObject_route3, { SCENE_OBJECTS.BANK_CHEST }, 5) then
                 waitUntil(hasAllItems, 2)
