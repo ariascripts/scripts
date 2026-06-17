@@ -80,6 +80,24 @@ if not itemList[1] then
     end
 end
 
+--old inventory item loading logic
+local function initInvItems()
+    print("Clearing itemList before initializing items")
+    itemList = {}
+    print("itemList cleared")
+
+    local added = {}
+    local vec = API.ReadInvArrays33()
+    for i = 1, #vec do
+      if vec[i].itemid1 and not added[vec[i].itemid1] and vec[i].itemid1 > 0 and vec[i].itemid1_size > 0 then
+        local amt = vec[i].itemid1_size
+        itemList[#itemList + 1] = { id = vec[i].itemid1, amount = amt }
+        print("Added item: " .. vec[i].textitem .. " (" .. vec[i].itemid1 .. ") with amount " .. amt)
+        added[vec[i].itemid1] = true
+      end
+    end
+end
+
 local portableOptions = { "Workbench", "Fletcher", "Range", "Well", "Crafter", "Brazier" }
 
 local MAX_IDLE_TIME_MINUTES = 5
@@ -175,11 +193,17 @@ local function drawGUI()
    API.DrawProgressBar(IGP)
 end
 
+local initItemListButton = API.CreateIG_answer();
+initItemListButton.box_name = "Init Inventory Items";
+initItemListButton.box_start = FFPOINT.new(1, 60, 0);
+initItemListButton.box_size = FFPOINT.new(200, 30, 0);
+API.DrawBox(initItemListButton)
+
 local comboBoxSelect = API.CreateIG_answer()
 
 local function setupOptions()
     comboBoxSelect.box_name = "Portables"
-    comboBoxSelect.box_start = FFPOINT.new(1,60,0)
+    comboBoxSelect.box_start = FFPOINT.new(1,80,0)
     comboBoxSelect.stringsArr = {}
     comboBoxSelect.box_size = FFPOINT.new(440, 0, 0)
 
@@ -256,6 +280,11 @@ while (API.Read_LoopyLoop()) do
                 resetStats()
             end
         end
+    end
+
+    if initItemListButton.return_click then
+        initInvItems()
+        initItemListButton.return_click = false
     end
 
     if chosenPortable ~= -1 then
