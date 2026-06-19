@@ -2,11 +2,12 @@
     @name Alpha Portables
     @description Automates tasks at portable skilling stations (ideally at W84 Fort Forinthry)
     @author Aria
-    @version 1.3
+    @version 1.31
 ]]
 
 local API = require("api")
 
+API.SetDrawTrackedSkills(true)
 --make sure the left click option is configured to be the one you want for portables with a "Configure" option
 local SCENE_OBJECTS = {
     WORKBENCH = 117926,
@@ -19,6 +20,9 @@ local SCENE_OBJECTS = {
     BANK_CHEST = 125115, --Fort Forinthry bank chest
     WORKROOM_BANK_CHEST = 125734 --Fort Forinthry workroom bank chest
 }
+local allSkills = {"ATTACK", "STRENGTH", "RANGED", "DEFENCE", "CONSTITUTION", "PRAYER", "SUMMONING", "DUNGEONEERING", "AGILITY", "MAGIC",
+     "THIEVING", "SLAYER", "HUNTER", "SMITHING", "CRAFTING", "FLETCHING", "HERBLORE", "RUNECRAFTING", "COOKING",
+    "CONSTRUCTION", "FIREMAKING", "WOODCUTTING", "FARMING", "FISHING", "MINING", "DIVINATION", "INVENTION", "ARCHAEOLOGY", "NECROMANCY"}
 
 local PORTABLES = {
     {id = SCENE_OBJECTS.WORKBENCH, action = 0x29, skill = "CONSTRUCTION"},
@@ -29,13 +33,10 @@ local PORTABLES = {
     {id = SCENE_OBJECTS.BRAZIER, action = 0x29, skill = "FIREMAKING"}
 }
 
---#region User Inputs, don't modify this if you don't know what you're doing
+--#region Optional user settings, don't modify this if you don't know what you're doing
 local loadPresetKey = 0x32 --The 2 key
 --Change this value to 1 = workbench, 2 = fletcher, 3 = range, 4 = well, 5 = crafter, 6 = brazier if you don't want to have to select the portable you're using each time
 local chosenPortable = -1
---Max time to remain in the "processing" state before attempting to interact again
---You may want to change the timeout (in seconds) depending on the skill you are training
-local processingTimeout = 250
 
 --add the ids of the items you are processing to the table below, click "Inv" in the debug menu to view the ids of the items in the inventory
 local ID = {
@@ -52,7 +53,7 @@ local ID = {
 }
 
 --Add the items you are processing to the list below
---If the list empty, the script will stop after 30 seconds without gaining exp or if you run out of any of the items that were in the inventory when starting the script
+--If the list is empty, the script will stop after 30 seconds without gaining exp or if you run out of any of the items that were in the inventory when starting the script
 local itemList = {}
 --Example for cooking raw green jellyfish
 --itemList[1] = { id = ID.RAW_GREEN_JELLYFISH, amount = 28 }
@@ -101,15 +102,26 @@ end
 local portableOptions = { "Workbench", "Fletcher", "Range", "Well", "Crafter", "Brazier" }
 
 local MAX_IDLE_TIME_MINUTES = 5
+local MAX_TIME_WITHOUT_EXP = 30 --stop script if more than X seconds have elapsed without gaining exp while a portable exists
+local MAX_TIME_WITHOUT_PORTABLE = 300 --stop script if more than Y seconds have elapsed without a portable existing
 local startXp = 0
 local lastXp = startXp
-local startTime, afk = os.time(), os.time()
+local afk = os.time()
 local lastTimeGainedXp = os.time()
+local lastTimePortableExisted = os.time()
+
+local function getTotalExp()
+    local xp = 0
+    for _, skill in ipairs(allSkills) do
+        xp = xp + API.GetSkillXP(skill)
+    end
+    return xp
+end
 
 local function resetStats()
-    startXp = API.GetSkillXP(PORTABLES[chosenPortable].skill)
+    startXp = getTotalExp()
     lastXp = startXp
-    startTime, afk = os.time(), os.time()
+    afk = os.time()
     lastTimeGainedXp = os.time()
 end
 
@@ -124,73 +136,12 @@ local function idleCheck()
     end
 end
 
--- Rounds a number to the nearest integer or to a specified number of decimal places.
-local function round(val, decimal)
-    if decimal then
-        return math.floor((val * 10 ^ decimal) + 0.5) / (10 ^ decimal)
-    else
-        return math.floor(val + 0.5)
-    end
-end
-
-local function formatNumber(num)
-    if num >= 1e6 then
-        return string.format("%.1fM", num / 1e6)
-    elseif num >= 1e3 then
-        return string.format("%.1fK", num / 1e3)
-    else
-        return tostring(num)
-    end
-end
-
--- Format script elapsed time to [hh:mm:ss]
-local function formatElapsedTime(startTime)
-    local currentTime = os.time()
-    local elapsedTime = currentTime - startTime
-    local hours = math.floor(elapsedTime / 3600)
-    local minutes = math.floor((elapsedTime % 3600) / 60)
-    local seconds = elapsedTime % 60
-    return string.format("[%02d:%02d:%02d]", hours, minutes, seconds)
-end
-
-local function calcProgressPercentage(skill, currentExp)
-    local currentLevel = API.XPLevelTable(API.GetSkillXP(skill))
-    if currentLevel == 120 then return 100 end
-    local nextLevelExp = API.XPForLevel(currentLevel + 1)
-    local currentLevelExp = API.XPForLevel(currentLevel)
-    local progressPercentage = (currentExp - currentLevelExp) / (nextLevelExp - currentLevelExp) * 100
-    return math.floor(progressPercentage)
-end
-
-local function printProgressReport(final)
-    local skill = PORTABLES[chosenPortable].skill
-    local currentXp = API.GetSkillXP(skill)
+local function updateExp()
+    local currentXp = getTotalExp()
     if currentXp > lastXp then
         lastXp = currentXp
         lastTimeGainedXp = os.time()
     end
-    local elapsedMinutes = (os.time() - startTime) / 60
-    local diffXp = math.abs(currentXp - startXp);
-    local xpPH = round((diffXp * 60) / elapsedMinutes);
-    local time = formatElapsedTime(startTime)
-    local currentLevel = API.XPLevelTable(API.GetSkillXP(skill))
-    IGP.radius = calcProgressPercentage(skill, API.GetSkillXP(skill)) / 100
-    IGP.string_value = time ..
-    " | " ..
-    string.lower(skill):gsub("^%l", string.upper) ..
-    ": " .. currentLevel .. " | XP/H: " .. formatNumber(xpPH) .. " | XP: " .. formatNumber(diffXp)
-end
-
-local function setupGUI()
-    IGP = API.CreateIG_answer()
-    IGP.box_start = FFPOINT.new(5, 5, 0)
-    IGP.box_name = "PROGRESSBAR"
-    IGP.colour = ImColor.new(116, 2, 179);
-    IGP.string_value = PORTABLES[chosenPortable].skill
-end
-
-local function drawGUI()
-   API.DrawProgressBar(IGP)
 end
 
 local initItemListButton = API.CreateIG_answer();
@@ -264,8 +215,6 @@ local function hasAllItems()
     return true
 end
 
-local hasSetupGUI = false
-
 API.Write_LoopyLoop(true)
 while (API.Read_LoopyLoop()) do
     idleCheck()
@@ -274,7 +223,7 @@ while (API.Read_LoopyLoop()) do
         comboBoxSelect.return_click = false
 
         for i, option in ipairs(portableOptions) do
-            if (comboBoxSelect.string_value == option) then
+            if (comboBoxSelect.string_value == option and chosenPortable ~= i) then
                 print("Chose portable: ", option, "index: ", i)
                 chosenPortable = i
                 resetStats()
@@ -288,18 +237,12 @@ while (API.Read_LoopyLoop()) do
     end
 
     if chosenPortable ~= -1 then
-        if not hasSetupGUI then
-            setupGUI()
-            hasSetupGUI = true
-        end
-
-        drawGUI()
-        printProgressReport()
+        updateExp()
         API.DoRandomEvents()
 
         --stop script if no exp gained in the past 30s
-        if (os.time() - lastTimeGainedXp) > 30 then
-            print("No exp gained in the last 30 seconds")
+        if (os.time() - lastTimeGainedXp) > MAX_TIME_WITHOUT_EXP then
+            print("No exp gained in the last " .. MAX_TIME_WITHOUT_EXP .. " seconds")
             API.Write_LoopyLoop(false)
         elseif API.isProcessing() or (PORTABLES[chosenPortable].id == SCENE_OBJECTS.BRAZIER and API.CheckAnim(200)) then
             API.RandomSleep2(600, 50, 100)
@@ -311,6 +254,7 @@ while (API.Read_LoopyLoop()) do
                 --which could be a problem if there are multiple items that use the same ingredients i.e. urns
                 print("Interacting with portable")
                 if API.DoAction_Object1(PORTABLES[chosenPortable].action, API.OFF_ACT_GeneralObject_route0, { PORTABLES[chosenPortable].id }, 5) then
+                    lastTimePortableExisted = os.time()
                     if PORTABLES[chosenPortable].id == SCENE_OBJECTS.BRAZIER then
                         print("Waiting for animation")
 		                API.RandomSleep2(1000, 50, 100)
@@ -325,6 +269,11 @@ while (API.Read_LoopyLoop()) do
                 else
                     print("Unable to find portable")
                     API.RandomSleep2(1000, 100, 200)
+                    lastTimeGainedXp = os.time() --reset last time gained xp so I don't time out if no portable is currently deployed
+                    if os.time() - lastTimePortableExisted > MAX_TIME_WITHOUT_PORTABLE then
+                        print("No portable found after " .. MAX_TIME_WITHOUT_PORTABLE .. " seconds")
+                        API.Write_LoopyLoop(false)
+                    end
                 end
             end
         elseif API.BankOpen2() then
